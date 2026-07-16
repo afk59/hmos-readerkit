@@ -1,0 +1,129 @@
+Building a Reader
+Last updated: 2026-06-02 10:02
+Reader Kit's reading page component (ReadPageComponent) supports pagination for both standard TXT and rich text content (HTML+CSS), employing simulated and horizontal swipe page-turning techniques. It also provides the progress and behavior perception capabilities required by the reader during the page-turning process. By leveraging ReadPageComponent, you can quickly build your book reading capability.
+
+Service Process
+
+
+API Description
+This function involves five APIs. See the following table for detailed API information.
+
+API	Description
+getDefaultHandler(path: string): Promise<BookParserHandler>	Obtains the default book parser.
+init(context: common.UIAbilityContext): Promise<void>	
+Initializes the ReadPageComponent controller.
+
+This API must be executed prior to any other APIs of ReaderComponentController.
+
+setPageConfig(pageConfig: ReaderSetting): void	Sets or modifies page typesetting attributes.
+registerBookParser(bookParserHandler: bookParser.BookParserHandler): void	
+Registers a book parser.
+
+Call this API prior to the startPlay API.
+
+startPlay(spineIndex: number, domPos: string): Promise<void>	
+Opens a book at a specified reading progress. This API returns the result asynchronously through a promise.
+
+Call this API only after the registerBookParser API is called.
+
+Development Procedure
+Import required modules.
+
+// Import the parsing capability, reading page component, and reader control class.
+import { bookParser, ReadPageComponent, readerCore } from '@kit.ReaderKit';
+import { BusinessError } from '@kit.BasicServicesKit';
+import { display } from '@kit.ArkUI';
+import { hilog } from '@kit.PerformanceAnalysisKit';
+import { common } from '@kit.AbilityKit';
+Initialize the component controller and default settings, and define the book parser.
+
+// Component controller, which is used to call typesetting capabilities.
+private readerComponentController: readerCore.ReaderComponentController = new readerCore.ReaderComponentController();
+// Default setting options, which are used to initialize the reader page's default attributes.
+private readerSetting: readerCore.ReaderSetting = {
+  fontName: 'System font',
+  fontPath: '',
+  fontSize: 18,
+  fontColor: '#000000',
+  fontWeight: 400,
+  lineHeight: 1.9,
+  nightMode: false,
+  themeColor: 'rgba(248, 249, 250, 1)',
+  themeBgImg: '',
+  flipMode: '0',
+  scaledDensity: display.getDefaultDisplaySync().scaledDensity > 0 ? display.getDefaultDisplaySync().scaledDensity :
+    1,
+  viewPortWidth: 1260, // Viewport width. Obtain it based on the actual device characteristics. Otherwise, the reading page may have display issues.
+  viewPortHeight: 2720, // Viewport height. Obtain it based on the actual device characteristics. Otherwise, the reading page may have display issues.
+};
+// Book parser, which is registered with the component controller, allowing the typesetting engine to utilize it.
+private bookParserHandler: bookParser.BookParserHandler | null = null;
+// Check whether the page is being loaded. (Hide the page after page rendering is complete to prevent a black screen during display.)
+@State isLoading: boolean = true;
+Build ReadPageComponent to display the reading content.
+
+build() {
+  Stack() {
+    ReadPageComponent({
+      controller: this.readerComponentController,
+      readerCallback: (err: BusinessError, data: readerCore.ReaderComponentController) => {
+        this.readerComponentController = data;
+      }
+    })
+
+    Row() {
+      Text('Loading...')
+    }
+    .width('100%')
+    .height('100%')
+    .justifyContent(FlexAlign.Center)
+    .backgroundColor(Color.White)
+    .visibility(this.isLoading ? Visibility.Visible : Visibility.None)
+  }.width('100%').height('100%')
+}
+Initialize the book parser for the book file that has been imported to the app sandbox directory. Call the startPlay API to render the reader page at the specified progress.
+
+aboutToAppear(): void {
+  // Initialize the reader.
+  let context = this.getUIContext().getHostContext() as common.UIAbilityContext;
+  let filePath: string = `${context.filesDir}/abc.epub`;
+  let spineIndex: number = 0;
+  let domPos: string = '';
+  this.registerListener();
+  this.startPlay(filePath, spineIndex, domPos);
+}
+
+private registerListener(): void {
+  this.readerComponentController.on('pageShow', (data: readerCore.PageDataInfo): void => {
+    hilog.info(0x0000, 'testTag', 'pageshow: data is: ' + JSON.stringify(data));
+    if (data.state === readerCore.PageState.PAGE_ON_SHOW) {
+      this.isLoading = false;
+    }
+  });
+}
+
+private async startPlay(filePath: string, spineIndex: number, domPos: string) {
+  try {
+    let context = this.getUIContext().getHostContext() as common.UIAbilityContext;
+    // Initialize the component controller, enabling ReadPageComponent to call the typesetting engine.
+    let initPromise = this.readerComponentController.init(context);
+    // Initialize the book parser.
+    let bookParserHandler = bookParser.getDefaultHandler(filePath);
+    let result: [bookParser.BookParserHandler, void] = await Promise.all([bookParserHandler, initPromise]);
+    this.bookParserHandler = result[0];
+    // Set the default page attributes for the default typesetting style.
+    this.readerComponentController.setPageConfig(this.readerSetting);
+    // Register the book parser with the component controller so that the typesetting engine can call it.
+    this.readerComponentController.registerBookParser(this.bookParserHandler);
+    // Call the startPlay API to navigate to the specified chapter progress.
+    this.readerComponentController.startPlay(spineIndex|| 0, domPos);
+  } catch (err) {
+    hilog.error(0x0000, 'testTag', 'startPlay: err: ' + JSON.stringify(err));
+  }
+}
+
+aboutToDisappear(): void {
+  this.readerComponentController.off('pageShow');
+  // Release the reader instance when exiting.
+  this.readerComponentController.releaseBook();
+}

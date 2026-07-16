@@ -1,0 +1,105 @@
+Customizing the Font
+Last updated: 2026-06-02 10:02
+You can implement real-time font change for reading content on your app through the fontPath attribute of ReaderSetting.
+
+Custom font files can be stored in either of the following directories:
+
+resources/rawfile in the project directory
+
+App sandbox directory
+
+Service Process
+
+
+API Description
+This function involves three APIs. See the following table for detailed API information.
+
+API	Description
+setPageConfig(pageConfig: ReaderSetting): void	Sets or modifies page typesetting attributes.
+on('resourceRequest')	Registers a resource request callback. If a custom background or font is set, the typesetting engine uses this API to obtain the resource ArrayBuffer.
+off('resourceRequest')	Deregisters a resource request callback. This API can be called when a page is destroyed.
+Preparations
+Before customizing fonts, ensure that you have built a reader.
+
+You have prepared font files and stored them in the correct directory.
+
+Development Procedure
+Import required modules.
+
+import { fileIo as fs } from '@kit.CoreFileKit';
+import { common } from '@kit.AbilityKit';
+import { hilog } from '@kit.PerformanceAnalysisKit';
+Define the font file storage path.
+
+If the font file is stored in the resources/rawfile/fonts directory:
+let filePath: string = 'fonts/SourceHanSerifCN-VF.ttf';
+If the font file is stored in the app sandbox directory:
+let filePath: string = this.getUIContext().getHostContext()!.filesDir + '/fonts/SourceHanSerifCN-VF.ttf'
+Specify the name and path of the custom font in fontName and fontPath of ReaderSetting, respectively. Then call the setPageConfig API of ReaderComponentController to re-render the UI.
+
+this.readerSetting.fontName = 'Source Han Serif';
+// The path is either of the paths described in the preceding step.
+this.readerSetting.fontPath = filePath;
+this.readerComponentController.setPageConfig(this.readerSetting);
+Register the resource request API of the typesetting engine and return the corresponding resource.
+
+Upon detecting custom font usage, the typesetting engine requests the font through the API. Your app needs to determine whether it is a font request based on the returned file path. If yes, the app returns ArrayBuffer based on the font file path.
+
+aboutToAppear(): void {
+  // Register a resource request callback.
+  this.readerComponentController.on('resourceRequest', this.resourceRequest);
+}
+
+aboutToDisappear(): void {
+  // Deregister the resource request callback.
+  this.readerComponentController.off('resourceRequest');
+}
+
+private isFont(filePath: string): boolean {
+  let options = [".ttf", ".woff2", ".otf"];
+  let path = filePath.toLowerCase();
+  let result = path.indexOf(options[0]) != -1 || path.indexOf(options[1]) != -1 || path.indexOf(options[2]) != -1;
+  hilog.info(0x0000, 'testTag',  'isFont = ' + result);
+  return result;
+}
+
+/**
+ * Resource request callback.
+ */
+private resourceRequest: bookParser.CallbackRes<string, ArrayBuffer> = (filePath: string): ArrayBuffer => {
+  hilog.info(0x0000, 'testTag', 'resourceRequest : filePath = ' + filePath);
+  if (filePath.length === 0) {
+    return new ArrayBuffer(0);
+  }
+  if (!this.isFont(filePath)) {
+    return new ArrayBuffer(0);
+  }
+  try {
+    let context = this.getUIContext().getHostContext() as common.UIAbilityContext;
+    // Obtain the font file as a Uint8Array from the resources/rawfile/fonts directory.
+    let value: Uint8Array = context.resourceManager.getRawFileContentSync(this.readerSetting.fontPath);
+    hilog.info(0x0000, 'testTag', 'resourceRequest : get other resource succeeded ');
+    return value.buffer as ArrayBuffer;
+  } catch (error) {
+    let code = (error as BusinessError).code;
+    let message = (error as BusinessError).message;
+    hilog.error(0x0000, 'testTag',
+      `resourceRequest : get other resource failed, error code: ${code}, message: ${message}.`);
+  }
+  // If the font file data fails to be obtained from the resources/rawfile/fonts directory, obtain it from the sandbox directory.
+  return this.loadFileFromPath(this.readerSetting.fontPath);
+}
+
+private loadFileFromPath(filePath: string): ArrayBuffer {
+  try {
+    let stats = fs.statSync(filePath);
+    let file = fs.openSync(filePath, fs.OpenMode.READ_ONLY);
+    let buffer = new ArrayBuffer(stats.size);
+    fs.readSync(file.fd, buffer);
+    fs.closeSync(file);
+    return buffer;
+  } catch (err) {
+    hilog.error(0x0000, 'testTag', "mkdir failed with error message: ", err.message, ", error code: ", err.code);
+    return new ArrayBuffer(0);
+  }
+}

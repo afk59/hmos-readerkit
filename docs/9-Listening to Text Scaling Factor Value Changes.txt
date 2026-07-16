@@ -1,0 +1,90 @@
+Listening to Text Scaling Factor Value Changes
+Last updated: 2026-06-02 10:02
+In scenarios such as Multi-Window, the value of the text scaling factor Display.scaledDensity may change. If the new value fails to match the currently applied value of the reader, you need to update the scaledDensity attribute of ReaderSetting, triggering the setPageConfig API of ReaderComponentController for page re-typesetting.
+
+API Description
+This function involves one API. See the following table for detailed API information.
+
+API	Description
+setPageConfig(pageConfig: ReaderSetting): void	Sets or modifies page typesetting attributes.
+Preparations
+Before listening to the text scaling factor value changes, ensure that you have built a reader.
+
+Development Procedure
+Import required modules.
+
+import { display } from '@kit.ArkUI';
+import { hilog } from '@kit.PerformanceAnalysisKit';
+Call the display.on API to listen to text scaling factor value changes.
+
+This API checks whether the system text scaling factor value equals the currently applied value of the reader. If not, it sets isDensityChange to true through AppStorage that manages the app-level variable status, and then closes the reading page.
+
+@Entry
+@Component
+struct Reader {
+  private screenDensityCallBack: Callback<number> | null = null;
+
+  aboutToAppear(): void {
+    this.registerScreenDensityChange();
+    hilog.info(0x0000, 'testTag',
+      'aboutToAppear : current scaledDensity = ' + this.readerSetting.scaledDensity + ', change scaledDensity = ' +
+      display.getDefaultDisplaySync().scaledDensity);
+  }
+
+  /**
+   * Register a listener for text scaling factor value changes.
+   */
+  registerScreenDensityChange() {
+    this.screenDensityCallBack = (data: number) => {
+      let displaySync = display.getDefaultDisplaySync();
+      let scaledDensity = displaySync.scaledDensity;
+      if (scaledDensity !== this.readerSetting.scaledDensity) {
+        AppStorage.setOrCreate('isDensityChange', true);
+        this.getUIContext().getRouter().back();
+      }
+    }
+    display.on('change', this.screenDensityCallBack);
+  }
+
+  aboutToDisappear(): void {
+    display.off('change', this.screenDensityCallBack);
+  }
+
+  build() {
+    // Implement it by referring to the reader building section.
+  }
+}
+On the parent page of the reading page, use the @StorageLink decorator to listen to isDensityChange changes.
+
+When you exit a reading page, the onPageShow lifecycle callback of the parent index page is triggered. If a isDensityChange value change is detected, the method of re-opening the reading page is executed.
+
+You can save the reading progress by referring to Notifying the Reading Progress, pass the saved progress information to the reading page upon re-entry, and call the startPlay API to resume reading.
+
+import { hilog } from '@kit.PerformanceAnalysisKit';
+
+@Entry
+@Component
+struct Index {
+  /**
+   * Check whether the system text scaling factor value changes. If yes, restart the reader.
+   */
+  @StorageLink('isDensityChange') isDensityChange: boolean = false;
+
+  onPageShow(): void {
+    // If the text scaling factor value changes, re-open the book.
+    if (this.isDensityChange) {
+      this.jumper();
+      AppStorage.setOrCreate('isDensityChange', false);
+    }
+  }
+
+  private jumper() {
+    this.getUIContext().getRouter().pushUrl({ url: "pages/Reader" }).catch(() => {
+      hilog.error(0x0000, 'testTag', 'pushUrl failed');
+    });
+  }
+
+  build() {
+    // Implement it based on your service requirements.
+  }
+}

@@ -1,0 +1,45 @@
+Adapting the Dark and Light Modes
+Last updated: 2026-06-02 10:02
+When your app needs to dynamically switch themes based on device dark/light mode changes, you can use the onConfigurationUpdate callback of UIAbility to detect mode changes and then set font and background colors accordingly.
+
+API Description
+This function involves one API. See the following table for detailed API information.
+
+API	Description
+setPageConfig(pageConfig: ReaderSetting): void	Sets or modifies page typesetting attributes.
+Preparations
+Before adapting the dark and light modes, ensure that you have built a reader.
+
+Development Procedure
+Listen to the onConfigurationUpdate callback of UIAbility, and save the value of colorMode to AppStorage that manages the app-level variable status.
+
+import { Configuration, UIAbility } from '@kit.AbilityKit';
+
+export default class EntryAbility extends UIAbility {
+
+  onConfigurationUpdate(newConfig: Configuration): void {
+    AppStorage.setOrCreate('colorMode', newConfig.colorMode);
+  }
+}
+Use the @StorageLink decorator to listen to the colorMode value changes. If the value changes, trigger the change of the theme color accordingly.
+
+import { ConfigurationConstant } from '@kit.AbilityKit';
+
+@StorageLink('colorMode') @Watch('colorModeChange') colorMode: ConfigurationConstant.ColorMode =
+  ConfigurationConstant.ColorMode.COLOR_MODE_NOT_SET;
+
+/**
+ * Change the theme accordingly when the system dark mode changes.
+ */
+colorModeChange() {
+  if (this.colorMode === ConfigurationConstant.ColorMode.COLOR_MODE_DARK) {
+    this.readerSetting.nightMode = true;
+    this.readerSetting.fontColor = '#ffffff';
+    this.readerSetting.themeColor = '#202224';
+  } else {
+    this.readerSetting.nightMode = false;
+    this.readerSetting.fontColor = '#000000';
+    this.readerSetting.themeColor = '#FFFFFF';
+  }
+  this.readerComponentController.setPageConfig(this.readerSetting);
+}

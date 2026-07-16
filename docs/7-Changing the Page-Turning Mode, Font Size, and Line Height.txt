@@ -1,0 +1,25 @@
+Changing the Page-Turning Mode, Font Size, and Line Height
+Last updated: 2026-06-02 10:02
+You can implement real-time change of the page-turning mode, font size, and line height for the reading content on your app through the flipMode, fontSize, and lineHeight attributes of ReaderSetting, respectively.
+
+API Description
+This function involves one API. See the following table for detailed API information.
+
+API	Description
+setPageConfig(pageConfig: ReaderSetting): void	Sets or modifies page typesetting attributes.
+Preparations
+Before changing the page-turning mode, font size, and line height, ensure that you have built a reader.
+
+Development Procedure
+Change the page-turning mode.
+
+this.readerSetting.flipMode = '1'; // 0 indicates simulated page turning and 1 indicates swipe page turning.
+Change the font size.
+
+this.readerSetting.fontSize = 20;
+Change the line height.
+
+this.readerSetting.lineHeight = 2;
+Call the setPageConfig API of ReaderComponentController to re-render the UI.
+
+this.readerComponentController.setPageConfig(this.readerSetting);

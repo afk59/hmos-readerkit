@@ -1,0 +1,22 @@
+Manually Triggering Page Turning
+Last updated: 2026-06-02 10:02
+Reader Kit has integrated the tap and swipe page turning. You can use the manual page-turning API to implement other page-turning methods such as earphone-controlled page turning.
+
+Service Process
+
+
+API Description
+This function involves one API. See the following table for detailed API information.
+
+API	Description
+flipPage(isNext: boolean): void	Triggers ReadPageComponent to turn pages.
+Preparations
+Before manually triggering page turning, ensure that you have built a reader.
+
+Development Procedure
+Before calling the page-turning API, construct a scenario where page turning needs to be manually triggered, for example, earphone-controlled page turning.
+
+Call the flipPage API to implement page turning when page turning is triggered.
+
+let isNext: boolean = true; // true indicates the next page, and false indicates the previous page.
+this.readerComponentController.flipPage(isNext);

@@ -1,0 +1,154 @@
+Obtaining the Catalog Item List
+Last updated: 2026-06-02 10:02
+You can use the parsing capability to obtain a book's catalog item list and display it, enabling an ordered hierarchical presentation of chapter titles. When a user taps a catalog item, your app needs to obtain its location and associated resource information to facilitate navigation.
+
+Service Process
+
+
+API Description
+This function involves four APIs. See the following table for detailed API information.
+
+API	Description
+getDefaultHandler(path: string): Promise<BookParserHandler>	Obtains the default book parser.
+getCatalogList(): CatalogItem[]	Obtains the catalog item list of a book.
+getDomPosByCatalogHref(href: string): string	Obtains the start position for reading (domPos).
+getSpineList(): SpineItem[]	Obtains the spine item list.
+Development Procedure
+Import required modules.
+
+import { common } from '@kit.AbilityKit';
+import { bookParser } from '@kit.ReaderKit';
+import { hilog } from '@kit.PerformanceAnalysisKit';
+Initialize the book parser for the book file that has been imported to the app sandbox directory.
+
+private defaultHandler: bookParser.BookParserHandler | null = null;
+
+aboutToAppear(): void {
+  this.init().then(() => {
+  });
+}
+
+private async init() {
+  let context = this.getUIContext().getHostContext() as common.UIAbilityContext;
+  let path: string = `${context.filesDir}/abc.epub`;
+  try {
+    this.defaultHandler = await bookParser.getDefaultHandler(path);
+  } catch (error) {
+    hilog.error(0x0000, "testTAG", `getDefaultHandler failed, Code: ${error.code}, message: ${error.message}`);
+  }
+}
+Obtain the catalog item list and display it.
+
+@State catalogItemList: bookParser.CatalogItem[] = [];
+
+aboutToAppear(): void {
+  this.init().then(() => {
+    this.getCatalogList();
+  });
+}
+
+private getCatalogList() {
+  try {
+    this.catalogItemList = this.defaultHandler?.getCatalogList() || [];
+  } catch (error) {
+    hilog.error(0x0000, "testTAG", `getCatalogList failed, Code: ${error.code}, message: ${error.message}`);
+  }
+}
+
+build() {
+  Column() {
+    List() {
+      ForEach(this.catalogItemList, (item: bookParser.CatalogItem) => {
+        ListItem() {
+          Column() {
+            Row() {
+              Row() {
+                Text(' · ')
+                  .fontSize(14)
+                Text(item.catalogName)
+                  .fontSize(14)
+                  .textOverflow({ overflow: TextOverflow.Ellipsis })
+                  .padding({ top: 8, bottom: 8 })
+                  .maxLines(2)
+                  .layoutWeight(1)
+              }
+
+            }
+            .width('100%')
+            .height(48)
+            .justifyContent(FlexAlign.Center)
+            .alignItems(VerticalAlign.Center)
+
+            Divider()
+          }
+          .padding({
+            left: item.catalogLevel ? item.catalogLevel * 26 : 10,
+            right: item.catalogLevel ? item.catalogLevel * 26 : 10,
+            top: 6,
+            bottom: 6
+          })
+          .onClick(async () => {
+            // Implement the function of navigating to a specified chapter by tapping a catalog item.
+            this.jumpToCatalogItem(item);
+          })
+        }
+      })
+    }
+    .scrollBar(BarState.Off)
+    .width('100%')
+    .height('100%')
+  }
+  .width('100%')
+  .height('100%')
+}
+Obtain the catalog item location and resource information for navigation.
+
+private jumpToCatalogItem(catalogItem: bookParser.CatalogItem) {
+  let domPos = this.getDomPos(catalogItem);
+  let resourceIndex = this.getResourceItemByCatalog(catalogItem).index;
+  // Call the startPlay API and pass domPos and resourceIndex to navigate to the specified location.
+  hilog.info(0x0000, "testTAG", `jumpToCatalogItem domPos:${domPos}, resourceIndex:${resourceIndex}`);
+}
+
+private getDomPos(catalogItem: bookParser.CatalogItem): string {
+  try {
+    let domPos: string = this.defaultHandler?.getDomPosByCatalogHref(catalogItem.href || '') || '';
+    return domPos;
+  } catch (error) {
+    hilog.error(0x0000, "testTAG", `getDomPos failed, Code: ${error.code}, message: ${error.message}`);
+  }
+  return '';
+}
+
+/**
+ * Obtain resource items associated with a catalog item.
+ *
+ * @param catalogItem Catalog item.
+ */
+private getResourceItemByCatalog(catalogItem: bookParser.CatalogItem): bookParser.SpineItem {
+  let resourceFile = catalogItem.resourceFile || '';
+  try {
+    let spineList: bookParser.SpineItem[] = this.defaultHandler?.getSpineList() || []
+    // Search for the resource items associated with a catalog item.
+    let resourceItemArr = spineList.filter(item => item.href === resourceFile);
+    if (resourceItemArr.length > 0) {
+      hilog.info(0x0000, 'testTag', 'getResourceItemByCatalog get resource ', resourceItemArr[0]);
+      let resourceItem = resourceItemArr[0];
+      return resourceItem;
+    } else if (spineList.length > 0) {
+      // If no resource item is found, the first resource item is returned by default.
+      hilog.info(0x0000, 'testTag', 'getResourceItemByCatalog get resource in resourceList', spineList[0]);
+      return spineList[0];
+    }
+  } catch (error) {
+    hilog.error(0x0000, "testTAG", `getDomPos failed, Code: ${error.code}, message: ${error.message}`);
+  }
+  // If there is no resource item, the default value is returned.
+  hilog.info(0x0000, 'testTag', 'getResourceItemByCatalog get resource in escape');
+  return {
+    idRef: '',
+    index: 0,
+    href: '',
+    properties: ''
+  };
+}

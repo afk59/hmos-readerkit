@@ -1,0 +1,88 @@
+Obtaining Book Information
+Last updated: 2026-06-02 10:02
+You can use DocumentViewPicker to import a book file to the app sandbox directory. Then your app can import the book file to the bookshelf, use the parsing capability to obtain the book information including the book cover, book title, and author, and display the information on the bookshelf.
+
+Service Process
+
+
+API Description
+This function involves three APIs. See the following table for detailed API information.
+
+API	Description
+getDefaultHandler(path: string): Promise<BookParserHandler>	Obtains the default book parser.
+getBookInfo(): BookInfo	Obtains book information.
+getResourceContent(spineIndex: number, filePath: string): ArrayBuffer	Obtains book content.
+Development Procedure
+Import required modules.
+
+import { common } from '@kit.AbilityKit';
+import { bookParser } from '@kit.ReaderKit';
+import { hilog } from '@kit.PerformanceAnalysisKit';
+import { image } from '@kit.ImageKit';
+Initialize the book parser for the book file that has been imported to the app sandbox directory.
+
+private defaultHandler: bookParser.BookParserHandler | null = null;
+
+aboutToAppear(): void {
+  this.init().then(() => {
+  });
+}
+
+private async init() {
+  let context = this.getUIContext().getHostContext() as common.UIAbilityContext;
+  let path: string = `${context.filesDir}/abc.epub`;
+  try {
+    this.defaultHandler = await bookParser.getDefaultHandler(path);
+  } catch (error) {
+    hilog.error(0x0000, "testTAG", `getDefaultHandler failed, Code: ${error.code}, message: ${error.message}`);
+  }
+}
+Obtain and display the book title, author, and cover.
+
+@State bookCover: PixelMap | null = null;
+@State bookTitle: string = '';
+@State author: string = '';
+
+aboutToAppear(): void {
+  this.init().then(() => {
+    this.getBookInfo();
+  });
+}
+
+private async getBookInfo() {
+  try {
+    let bookInfo: bookParser.BookInfo | undefined = this.defaultHandler?.getBookInfo();
+    if (bookInfo) {
+      this.bookTitle = bookInfo.bookTitle || '';
+      this.author = bookInfo?.bookCreator || '';
+      // SpineIndex is not required for obtaining the book cover.
+      let buffer = this.defaultHandler?.getResourceContent(-1, bookInfo.bookCoverImage);
+      let imageSource: image.ImageSource = image.createImageSource(buffer);
+      this.bookCover = await imageSource.createPixelMap();
+      imageSource.release();
+    }
+    hilog.info(0x0000, 'testTAG', 'getBookInfo bookInfo is: ' + JSON.stringify(bookInfo));
+  } catch (error) {
+    hilog.error(0x0000, 'testTAG', `getBookInfo failed, Code: ${error.code}, message: ${error.message}`);
+  }
+}
+
+build() {
+  Column() {
+    Text('Book title:' + this.bookTitle)
+      .fontSize(20)
+      .fontColor("#E6000000")
+      .margin({ top: 50 })
+    Text('Author:' + this.author)
+      .fontSize(20)
+      .fontColor("#E6000000")
+      .margin({ top: 10 })
+    Image(this.bookCover)
+      .width(200)
+      .aspectRatio(3 / 4)
+      .borderRadius(5)
+      .margin({ top: 10 })
+  }
+  .alignItems(HorizontalAlign.Start)
+  .margin({ left: 10, right: 10 })
+}
