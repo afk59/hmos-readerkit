@@ -1,0 +1,96 @@
+Ticket 1
+
+Title:
+Cover Image Sample Passes Possibly-Undefined Buffer to image.createImageSource()
+
+Summary:
+In "Obtaining Book Information," the sample uses optional chaining (this.defaultHandler?.getResourceContent(...)), which can yield undefined, but immediately passes the result into image.createImageSource(buffer) without a null check. createImageSource expects a valid ArrayBuffer, so following the sample as written can throw at runtime if defaultHandler is unset when getBookInfo() runs.
+
+Severity Level: P2
+
+Stage: Stage 2
+
+Blocker Status: No Blocker
+
+Category: Third party SDK
+
+Reasoning:
+- File: 2-Obtaining Book Information.txt, lines 59–61.
+- getResourceContent is typed to return Arrained call can silently resolve to undefined,creating a type/runtime mismatch not handled anywhere in the sample.
+- Developers copying this snippet as-is risking the book cover; a simple undefined checkresolves it, so it's non-blocking but should be corrected in the reference sample.
+
+---
+Ticket 2
+
+Title:
+Copy-Paste Error: getResourceItemByCatalog Logs "getDomPos failed" Instead of Its Own Function Name
+
+Summary:
+In "Obtaining the Catalog Item List," the catch block inside getResourceItemByCatalog() logs getDomPos failed — the
+error message from the neighboring getDomPosrencing itself. This is a copy-paste artifact that misleads anyone debugging catalog-navigation failures.
+
+Severity Level: P2
+
+Stage: Stage 2
+
+Blocker Status: No Blocker
+
+Category: Third party SDK
+
+Reasoning:
+- File: 3-Obtaining the Catalog Item List.txt, line 144, inside the getResourceItemByCatalog method (lines 128–154).
+- The correct getDomPos function (lines 113–121) legitimately uses that message; it was duplicated into the wrong
+function.
+- Misattributed log messages waste developer time root-causing catalog navigation bugs — an unclear error message per the P2 rubric.
+
+---
+Ticket 3                                                                                                           
+Title:
+loadFileFromPath Sample Logs "mkdir failed" for File-Read Errors and Drops Diagnostic Details                      
+Summary:
+Both "Customizing the Font" and "Customizing the Page Background" contain an identical loadFileFromPath() helper whcatch block logs "mkdir failed with error metion only performsfs.statSync/openSync/readSync — no directory creation occurs. Additionally, err.message and err.code are passed as extra hilog.error arguments with no %{public string, so the actual error details aredropped from the log output entirely.
+
+Severity Level: P2
+
+Stage: Stage 2
+
+Blocker Status: No Blocker
+
+Category: Third party SDK
+
+Reasoning:
+- Files: 5-Customizing the Font.txt lines 10Page Background.txt lines 97–100 (identicalduplicated code).
+- Message text is unrelated to the actual failure (font/background file read, not mkdir), which will mislead
+debugging.
+- hilog.error(domain, tag, format, ...args) only substitutes variadic args into %{public}s/%{private}s tokens in
+format; since the format string here has non appear in the log — contrast with thecorrectly-formatted hilog.error calls elsewhere in the same files (e.g., the resourceRequest catch block) that use template literals.
+- Non-blocking (feature still works), but actively hampers troubleshooting for anyone following the sample.
+
+---
+Ticket 4
+
+Title:
+Background Color/Image Samples Mislabel Dark Values as "Light Background," Contradicting the Doc's Own Dark-Mode Warning
+
+Summary:                                                                                               "Customizing the Page Background" opens withround + white font (light bg mismatched withdark mode) makes text invisible. But its own two code samples set themeColor = '#000000' and themeBgImg = 'dark_sky_first.jpg' — both clearly dark values — while the accompanying comments say "If a light backgcolor/image is set, disable the dark mode" a a light background." Following the comments' logic with genuinely light assets would reproduce the exact invisible-text problem the doc warns against.
+
+Severity Level: P2                                                                                     
+
+
+Reasoning:
+- File: 6-Customizing the Page Background.txt, lines 33–39 (color) and lines 41–47 (image).            - #000000 and a file literally named dark_skbut both are captioned "light background" inthe comments — an internal contradiction.                                                              - This directly undermines the doc's stated ound/dark-mode compatibility guidance),bug the doc exists to prevent.
+- Workaround is straightforward (developers can infer correct pairing from the hex/filename), so non-blocking.
+
+---                                                                                                    Ticket 5
+                                                                                                       Title:
+PageDataInfo Field Name Mismatch: Doc References Non-Existent data.startDomPos Instead of data.domPos
+                                                                                                       Summary:
+"Notifying the Reading Progress" states twice (lines 3 and 17) that page rendering info contains domPos and resourceIndex attributes — consistent with startPlay(spineIndex: number, domPos: string) in "Building athe code sample's inline comment instead telsourceIndex and data.startDomPos, referencing a field name that doesn't match the documented/actual API.                                             
+
+Stage: Stage 2
+
+Blocker Status: No Blocker                                                                             
+Category: Third party SDK
+                                                                                                       Reasoning:
+- File: 11-Notifying the Reading Progress.txt, line 3, line 17 (prose says domPos) vs. line 28 (code comment says data.startDomPos).                                                                                     - Cross-checked against 4-Building a Reader.spineIndex, domPos) confirms theparameter/attribute is domPos, not startDomPos.
+- A developer trusting the inline comment could read undefined when saving progress, silently breaking reading-position restore — a functionally ri underlying API itself is unaffected once the correct field name is used.

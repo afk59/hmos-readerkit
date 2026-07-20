@@ -1,6 +1,20 @@
 {
   "app": {
-    "signingConfigs": [],
+    "signingConfigs": [
+      {
+        "name": "default",
+        "type": "HarmonyOS",
+        "material": {
+          "certpath": "C:\\Users\\AFK\\.ohos\\config\\default_readerkit_H9KJf64mo32dLx5zXD14ejcP27Gy40G_pulalD9et5k=.cer",
+          "keyAlias": "debugKey",
+          "keyPassword": "0000001B89C8B4EE08125AA83E88297E37A178E0080B0ADF9F954D17EB07D153AE607451E307600C172F7B",
+          "profile": "C:\\Users\\AFK\\.ohos\\config\\default_readerkit_H9KJf64mo32dLx5zXD14ejcP27Gy40G_pulalD9et5k=.p7b",
+          "signAlg": "SHA256withECDSA",
+          "storeFile": "C:\\Users\\AFK\\.ohos\\config\\default_readerkit_H9KJf64mo32dLx5zXD14ejcP27Gy40G_pulalD9et5k=.p12",
+          "storePassword": "0000001BF1F1EBE47F00AA34C9A5ECA5C4025C885D7663857D6D52FDA54AC164CE7EC6644681298501CF5D"
+        }
+      }
+    ],
     "products": [
       {
         "name": "default",
